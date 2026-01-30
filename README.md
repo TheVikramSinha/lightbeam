@@ -50,3 +50,40 @@ git clone [https://github.com/thevikramsinha/lightbeam.git](https://github.com/t
 cd lightbeam
 # Use any static server (e.g., Python, VS Code Live Server)
 python3 -m http.server 8080
+
+
+---
+
+## 💡 Intended Use Cases
+LightBeam is architected for **high-security, low-bandwidth** scenarios where physical isolation (air-gapping) is a strict requirement. It is not designed to replace general-purpose file sharing tools like WiFi Direct or Bluetooth.
+
+### 1. Cold Storage Key Transport (The "Crypto Bridge")
+* **Scenario:** You have generated a private key or seed phrase on a permanently offline machine (cold storage) to ensure it never touches the internet.
+* **Use Case:** Use LightBeam to flash the 64-character key or JSON keystore file to your mobile wallet.
+* **Advantage:** Eliminates the risk of USB malware or keyloggers intercepting the data during transfer.
+
+### 2. Password Manager Synchronization
+* **Scenario:** You need to transfer a specific, complex password or a small `.kdbx` database update from a secure terminal to a personal device.
+* **Use Case:** Transmit the credential string or file optically.
+* **Advantage:** No digital footprint; the data exists only as light for the duration of the transfer.
+
+### 3. The "Digital Dead Drop"
+* **Scenario:** Leaving a message or file for a recipient without exchanging contact details or pairing devices.
+* **Use Case:** The Sender leaves the loop running on a screen. The Receiver walks by, scans the stream, and captures the data without ever establishing a handshake or log entry.
+
+---
+
+## ⚠️ Limitations & Legal Disclaimer
+
+### Technical Constraints
+* **Throughput:** This protocol operates at optical speeds (approx. **10KB - 50KB/s**). It is **not suitable** for large files (videos, high-res images, or large binaries).
+* **Environmental Factors:** Performance is heavily dependent on screen brightness, camera autofocus speed, and ambient lighting. Glare or reflections can cause packet loss, forcing the receiver to wait for the loop to cycle.
+* **Reliability:** Due to the unidirectional nature of the protocol (UDP-style broadcast), there is no feedback loop. The Receiver cannot request a "retry" for a specific chunk; it must wait for the Sender to broadcast that chunk again.
+
+### Legal Disclaimer
+**This software is provided "as is", without warranty of any kind, express or implied.** By using LightBeam, you acknowledge that:
+1.  **Not for Mission-Critical Data:** This tool should not be relied upon for the transfer of life-critical, medical, or time-sensitive emergency data.
+2.  **No Liability:** The authors and contributors are not liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
+3.  **Experimental Nature:** This is a proof-of-concept implementation of optical air-gapped transmission and may not meet industry standards for encryption or error correction.
+
+*Use responsibly and at your own risk.*
