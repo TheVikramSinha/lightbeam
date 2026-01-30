@@ -1,159 +1,164 @@
 'use strict';
 
-// SAFETY CHECK: Verify Library Loaded
-if (typeof QRCode === 'undefined') {
-    alert("CRITICAL ERROR: The QRCode library failed to load. Please check your internet connection or ad-blocker.");
+// SAFETY CHECK: Verify jsQR Library Loaded
+if (typeof jsQR === 'undefined') {
+    alert("CRITICAL ERROR: The jsQR library failed to load. Please check internet or use local files.");
 }
 
 // =========================================
 // 1. CONFIGURATION & STATE
 // =========================================
-const CONFIG = {
-    CHUNK_SIZE: 1200, 
-    DEFAULT_SPEED: 100
-};
-
 const state = {
-    chunks: [],
-    currentIndex: 0,
-    isTransmitting: false,
-    intervalId: null,
-    fileName: ''
+    receivedChunks: new Map(),
+    totalChunks: 0,
+    fileName: null,
+    isScanning: false,
+    startTime: null,
+    bytesReceived: 0
 };
 
 const elements = {
-    fileInput: document.getElementById('fileInput'),
-    controls: document.getElementById('controls'),
-    canvas: document.getElementById('qr-canvas'),
-    speedRange: document.getElementById('speedRange'),
-    speedDisplay: document.getElementById('speedDisplay'),
+    video: document.getElementById('video-preview'),
+    canvas: document.getElementById('hidden-canvas'),
+    ctx: document.getElementById('hidden-canvas').getContext('2d', { willReadFrequently: true }),
+    startBtn: document.getElementById('startBtn'),
+    permissionOverlay: document.getElementById('permissionOverlay'),
+    scannerUI: document.getElementById('scannerUI'),
     statusText: document.getElementById('statusText'),
-    chunkIndex: document.getElementById('chunkIndex'),
-    chunkTotal: document.getElementById('chunkTotal')
+    progressBar: document.getElementById('progressBar'),
+    chunkCount: document.getElementById('chunkCount'),
+    totalCount: document.getElementById('totalCount'),
+    fileNameDisplay: document.getElementById('fileNameDisplay'),
+    speedStat: document.getElementById('speedStat')
 };
 
 // =========================================
-// 2. CORE LOGIC: CHUNKING
+// 2. CORE LOGIC: SCANNING LOOP
 // =========================================
 
-async function prepareFile(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
+if (elements.startBtn) {
+    elements.startBtn.addEventListener('click', async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: { ideal: "environment" } } 
+            });
 
-        reader.onload = () => {
-            try {
-                // Binary to Base64 (Safe Method)
-                const binaryString = Array.from(new Uint8Array(reader.result))
-                    .map(byte => String.fromCharCode(byte))
-                    .join('');
-                
-                const base64Data = btoa(binaryString);
-                
-                const totalLength = base64Data.length;
-                const totalChunks = Math.ceil(totalLength / CONFIG.CHUNK_SIZE);
-                const generatedChunks = [];
+            elements.video.srcObject = stream;
+            elements.video.setAttribute("playsinline", true);
+            await elements.video.play();
+            
+            elements.permissionOverlay.style.display = 'none';
+            elements.scannerUI.style.display = 'block';
+            
+            state.isScanning = true;
+            requestAnimationFrame(scanFrame);
 
-                for (let i = 0; i < totalChunks; i++) {
-                    const start = i * CONFIG.CHUNK_SIZE;
-                    const end = Math.min(start + CONFIG.CHUNK_SIZE, totalLength);
-                    const chunkData = base64Data.substring(start, end);
-
-                    const payload = {
-                        i: i,
-                        t: totalChunks,
-                        d: chunkData
-                    };
-                    
-                    if (i === 0) payload.n = file.name;
-
-                    generatedChunks.push(JSON.stringify(payload));
-                }
-                resolve(generatedChunks);
-            } catch (err) {
-                reject(err);
-            }
-        };
-
-        reader.onerror = () => reject(new Error("File read failed"));
-        reader.readAsArrayBuffer(file);
+        } catch (err) {
+            console.error("Camera Error:", err);
+            alert("Camera access failed. Ensure you are on HTTPS.");
+        }
     });
 }
 
-// =========================================
-// 3. CORE LOGIC: TRANSMISSION LOOP
-// =========================================
+function scanFrame() {
+    if (!state.isScanning) return;
 
-function startPulse(speedMs) {
-    if (state.intervalId) clearInterval(state.intervalId);
+    if (elements.video.readyState === elements.video.HAVE_ENOUGH_DATA) {
+        elements.canvas.height = elements.video.videoHeight;
+        elements.canvas.width = elements.video.videoWidth;
+        
+        elements.ctx.drawImage(elements.video, 0, 0, elements.canvas.width, elements.canvas.height);
+        
+        const imageData = elements.ctx.getImageData(0, 0, elements.canvas.width, elements.canvas.height);
+        
+        // DECODE
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+        });
 
-    elements.speedDisplay.innerText = `${speedMs}ms`;
-
-    state.intervalId = setInterval(() => {
-        if (state.chunks.length === 0) return;
-
-        const currentData = state.chunks[state.currentIndex];
-
-        try {
-            // RENDER QR
-            QRCode.toCanvas(elements.canvas, currentData, {
-                width: 350,
-                margin: 2,
-                errorCorrectionLevel: 'L',
-                color: {
-                    dark: "#000000",
-                    light: "#ffffff"
-                }
-            }, function (error) {
-                if (error) console.error("QR Gen Error:", error);
-            });
-        } catch (e) {
-            console.error("Library Error:", e);
-            clearInterval(state.intervalId);
-            elements.statusText.innerText = "Library Error";
-            return;
+        if (code) {
+            handleDecodedData(code.data);
         }
-
-        elements.chunkIndex.innerText = state.currentIndex + 1;
-        state.currentIndex = (state.currentIndex + 1) % state.chunks.length;
-
-    }, speedMs);
-
-    elements.statusText.innerText = "Transmitting (Looping)";
-    elements.statusText.style.color = "var(--accent-success)";
+    }
+    requestAnimationFrame(scanFrame);
 }
 
 // =========================================
-// 4. EVENT LISTENERS
+// 3. CORE LOGIC: DATA PROCESSING
 // =========================================
 
-elements.fileInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    elements.statusText.innerText = "Processing File...";
-    elements.statusText.style.color = "var(--accent-primary)";
-    
+function handleDecodedData(jsonString) {
     try {
-        state.chunks = await prepareFile(file);
-        state.currentIndex = 0;
-        state.fileName = file.name;
-        
-        elements.chunkTotal.innerText = state.chunks.length;
-        elements.controls.style.display = 'block';
-        
-        startPulse(elements.speedRange.value);
+        const payload = JSON.parse(jsonString);
 
+        if (typeof payload.i === 'undefined' || typeof payload.d === 'undefined') return;
+
+        // Init
+        if (state.totalChunks === 0 && payload.t) {
+            state.totalChunks = payload.t;
+            elements.totalCount.innerText = payload.t;
+            state.startTime = Date.now();
+        }
+
+        // Filename
+        if (payload.n && !state.fileName) {
+            state.fileName = payload.n;
+            elements.fileNameDisplay.innerText = payload.n;
+        }
+
+        // Store
+        if (!state.receivedChunks.has(payload.i)) {
+            state.receivedChunks.set(payload.i, payload.d);
+            state.bytesReceived += payload.d.length;
+            updateProgress();
+            
+            if (state.receivedChunks.size === state.totalChunks) {
+                finalizeTransfer();
+            }
+        }
+    } catch (e) { }
+}
+
+function updateProgress() {
+    const percent = (state.receivedChunks.size / state.totalChunks) * 100;
+    elements.progressBar.style.width = `${percent}%`;
+    elements.chunkCount.innerText = state.receivedChunks.size;
+
+    const now = Date.now();
+    const elapsedSeconds = (now - state.startTime) / 1000;
+    if (elapsedSeconds > 0) {
+        const kbps = ((state.bytesReceived * 0.75) / 1024) / elapsedSeconds;
+        elements.speedStat.innerText = `${kbps.toFixed(1)} KB/s`;
+    }
+}
+
+function finalizeTransfer() {
+    state.isScanning = false;
+    elements.statusText.innerText = "Reassembling File...";
+
+    let fullBase64 = "";
+    for (let i = 0; i < state.totalChunks; i++) {
+        fullBase64 += state.receivedChunks.get(i);
+    }
+
+    try {
+        const binaryString = atob(fullBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        const blob = new Blob([bytes], { type: "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = state.fileName || "received_file";
+        document.body.appendChild(a);
+        a.click();
+        
+        elements.statusText.innerText = "Done! ✅";
     } catch (err) {
-        console.error(err);
-        alert("Error processing file. See console.");
+        alert("Reassembly failed.");
     }
-});
-
-elements.speedRange.addEventListener('input', (e) => {
-    const newSpeed = parseInt(e.target.value);
-    if (state.chunks.length > 0) {
-        startPulse(newSpeed);
-    } else {
-        elements.speedDisplay.innerText = `${newSpeed}ms`;
-    }
-});
+}
