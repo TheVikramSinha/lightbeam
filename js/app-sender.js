@@ -1,10 +1,15 @@
 'use strict';
 
+// SAFETY CHECK: Verify Library Loaded
+if (typeof QRCode === 'undefined') {
+    alert("CRITICAL ERROR: The QRCode library failed to load. Please check your internet connection or ad-blocker.");
+}
+
 // =========================================
 // 1. CONFIGURATION & STATE
 // =========================================
 const CONFIG = {
-    CHUNK_SIZE: 1200, // Safe limit for standard webcams (creates a manageable QR density)
+    CHUNK_SIZE: 1200, 
     DEFAULT_SPEED: 100
 };
 
@@ -16,7 +21,6 @@ const state = {
     fileName: ''
 };
 
-// DOM Elements
 const elements = {
     fileInput: document.getElementById('fileInput'),
     controls: document.getElementById('controls'),
@@ -32,26 +36,19 @@ const elements = {
 // 2. CORE LOGIC: CHUNKING
 // =========================================
 
-/**
- * Converts a File object into an array of QR-ready JSON strings.
- * Handles binary data via Base64 encoding.
- */
 async function prepareFile(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
 
         reader.onload = () => {
             try {
-                // 1. Convert Binary Buffer to Base64
-                // We map the Uint8Array to a binary string, then btoa() it.
-                // This is more memory efficient and safer for arbitrary binary types than simple string manipulation.
+                // Binary to Base64 (Safe Method)
                 const binaryString = Array.from(new Uint8Array(reader.result))
                     .map(byte => String.fromCharCode(byte))
                     .join('');
                 
                 const base64Data = btoa(binaryString);
                 
-                // 2. Split into Chunks
                 const totalLength = base64Data.length;
                 const totalChunks = Math.ceil(totalLength / CONFIG.CHUNK_SIZE);
                 const generatedChunks = [];
@@ -61,9 +58,6 @@ async function prepareFile(file) {
                     const end = Math.min(start + CONFIG.CHUNK_SIZE, totalLength);
                     const chunkData = base64Data.substring(start, end);
 
-                    // 3. Create Payload
-                    // Schema: { i: index, t: total, n: name, d: data }
-                    // We only send the filename 'n' on the first chunk to save bytes on subsequent frames
                     const payload = {
                         i: i,
                         t: totalChunks,
@@ -74,7 +68,6 @@ async function prepareFile(file) {
 
                     generatedChunks.push(JSON.stringify(payload));
                 }
-
                 resolve(generatedChunks);
             } catch (err) {
                 reject(err);
@@ -91,10 +84,8 @@ async function prepareFile(file) {
 // =========================================
 
 function startPulse(speedMs) {
-    // Clear previous loop if active
     if (state.intervalId) clearInterval(state.intervalId);
 
-    // Update Speed Display
     elements.speedDisplay.innerText = `${speedMs}ms`;
 
     state.intervalId = setInterval(() => {
@@ -102,23 +93,27 @@ function startPulse(speedMs) {
 
         const currentData = state.chunks[state.currentIndex];
 
-        // Render QR
-        QRCode.toCanvas(elements.canvas, currentData, {
-            width: 350,
-            margin: 2,
-            errorCorrectionLevel: 'L', // 'L' (Low) allows for less dense, easier-to-scan codes
-            color: {
-                dark: "#000000",
-                light: "#ffffff"
-            }
-        }, function (error) {
-            if (error) console.error("QR Gen Error:", error);
-        });
+        try {
+            // RENDER QR
+            QRCode.toCanvas(elements.canvas, currentData, {
+                width: 350,
+                margin: 2,
+                errorCorrectionLevel: 'L',
+                color: {
+                    dark: "#000000",
+                    light: "#ffffff"
+                }
+            }, function (error) {
+                if (error) console.error("QR Gen Error:", error);
+            });
+        } catch (e) {
+            console.error("Library Error:", e);
+            clearInterval(state.intervalId);
+            elements.statusText.innerText = "Library Error";
+            return;
+        }
 
-        // Update UI Counters
         elements.chunkIndex.innerText = state.currentIndex + 1;
-        
-        // Loop Logic
         state.currentIndex = (state.currentIndex + 1) % state.chunks.length;
 
     }, speedMs);
@@ -135,7 +130,6 @@ elements.fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // UI Feedback
     elements.statusText.innerText = "Processing File...";
     elements.statusText.style.color = "var(--accent-primary)";
     
@@ -144,11 +138,9 @@ elements.fileInput.addEventListener('change', async (e) => {
         state.currentIndex = 0;
         state.fileName = file.name;
         
-        // Update UI
         elements.chunkTotal.innerText = state.chunks.length;
         elements.controls.style.display = 'block';
         
-        // Auto-start
         startPulse(elements.speedRange.value);
 
     } catch (err) {
@@ -157,7 +149,6 @@ elements.fileInput.addEventListener('change', async (e) => {
     }
 });
 
-// Dynamic Speed Adjustment
 elements.speedRange.addEventListener('input', (e) => {
     const newSpeed = parseInt(e.target.value);
     if (state.chunks.length > 0) {
