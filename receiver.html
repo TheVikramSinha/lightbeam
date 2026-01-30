@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none';">
+    
+    <title>LightBeam Receiver | Optical Data Scanner</title>
+    <meta name="description" content="Receive files via light. The LightBeam Receiver uses your camera to scan high-speed QR codes and reassemble them into files. Air-gapped and secure.">
+    <meta name="keywords" content="QR code scanner, optical file receiver, air-gapped data transfer, offline file download, secure file receiver, Vikram Kumar Sinha">
+    <meta name="author" content="Vikram Kumar Sinha">
+    <link rel="canonical" href="https://thevikramsinha.github.io/lightbeam/receiver.html">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://thevikramsinha.github.io/lightbeam/receiver.html">
+    <meta property="og:title" content="LightBeam Receiver | Optical Data Scanner">
+    <meta property="og:description" content="Engage your camera to receive data streams via light. No internet required.">
+    <meta property="og:image" content="https://thevikramsinha.github.io/lightbeam/assets/og-receiver.jpg">
+
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://thevikramsinha.github.io/lightbeam/receiver.html">
+    <meta property="twitter:title" content="LightBeam Receiver | Optical Data Scanner">
+    <meta property="twitter:description" content="Engage your camera to receive data streams via light. No internet required.">
+    <meta property="twitter:image" content="https://thevikramsinha.github.io/lightbeam/assets/og-receiver.jpg">
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="theme-color" content="#0d1117">
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h2 style="color: var(--accent-success);">Receive Mode</h2>
+            <p class="subtitle">Align camera with the Sender's QR stream.</p>
+        </header>
+
+        <main>
+            <div id="permissionOverlay" style="text-align: center; margin-bottom: 2rem;">
+                <button id="startBtn" class="btn" style="border-color: var(--accent-success); color: var(--accent-success);">
+                    Initialize Camera System
+                </button>
+                <p style="font-size: 0.8rem; margin-top: 1rem; color: var(--text-muted);">
+                    Camera access is required locally. No data is sent to the cloud.
+                </p>
+            </div>
+
+            <div id="scannerUI" style="display:none; width: 100%;">
+                
+                <div class="canvas-wrapper" style="background: #000; border: 1px solid var(--accent-success); padding: 0; overflow: hidden; position: relative;">
+                    <video id="video-preview" autoplay playsinline muted></video>
+                    
+                    <canvas id="hidden-canvas" style="display:none;"></canvas>
+
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px; border: 2px solid rgba(46, 160, 67, 0.5); border-radius: 12px; pointer-events: none;"></div>
+                </div>
+
+                <div style="background: var(--bg-card); padding: 1rem; border-radius: 6px; border: 1px solid var(--border); margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                        <span id="statusText" style="font-weight: bold; color: var(--accent-success);">Scanning...</span>
+                        <span id="speedStat" style="font-family: monospace; font-size: 0.8rem;">0 KB/s</span>
+                    </div>
+
+                    <div class="progress-track">
+                        <div id="progressBar" class="progress-fill"></div>
+                    </div>
+                    
+                    <div style="font-size: 0.8rem; opacity: 0.7; margin-top: 5px; display: flex; justify-content: space-between;">
+                        <span>Chunks: <span id="chunkCount">0</span> / <span id="totalCount">?</span></span>
+                        <span id="fileNameDisplay">Waiting for header...</span>
+                    </div>
+                </div>
+            </div>
+
+            <a href="index.html" class="btn" style="margin-top: 2rem; border-color: var(--border); color: var(--text-muted);">← Back to Menu</a>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+    <script src="js/app-receiver.js"></script>
+</body>
+</html>
