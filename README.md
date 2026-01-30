@@ -42,16 +42,6 @@ LightBeam treats the camera as a high-speed optical receiver. It converts binary
 1.  Visit [thevikramsinha.github.io/lightbeam](https://thevikramsinha.github.io/lightbeam/) on both devices.
 2.  **Optional:** Disconnect from the internet (Airplane Mode) to verify security.
 
-### Local Development
-Clone the repository to run it locally:
-
-```bash
-git clone [https://github.com/thevikramsinha/lightbeam.git](https://github.com/thevikramsinha/lightbeam.git)
-cd lightbeam
-# Use any static server (e.g., Python, VS Code Live Server)
-python3 -m http.server 8080
-
-
 ---
 
 ## 💡 Intended Use Cases
@@ -87,3 +77,12 @@ LightBeam is architected for **high-security, low-bandwidth** scenarios where ph
 3.  **Experimental Nature:** This is a proof-of-concept implementation of optical air-gapped transmission and may not meet industry standards for encryption or error correction.
 
 *Use responsibly and at your own risk.*
+
+### Local Development
+Clone the repository to run it locally:
+
+```bash
+git clone [https://github.com/thevikramsinha/lightbeam.git](https://github.com/thevikramsinha/lightbeam.git)
+cd lightbeam
+# Use any static server (e.g., Python, VS Code Live Server)
+python3 -m http.server 8080
