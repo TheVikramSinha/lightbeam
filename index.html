@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';">
+    
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    
+    <meta name="referrer" content="no-referrer">
+
+    <title>LightBeam | Secure Air-Gapped Data Transport</title>
+    <meta name="description" content="LightBeam: An optical, air-gapped file transfer tool running entirely in the browser. Zero server, zero logs, zero footprint.">
+    <meta name="author" content="Vikram Kumar Sinha">
+    <link rel="canonical" href="https://thevikramsinha.github.io/lightbeam/">
+
+    <link rel="manifest" href="manifest.json">
+    
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "LightBeam",
+      "operatingSystem": "Browser",
+      "applicationCategory": "SecurityUtility",
+      "author": {
+        "@type": "Person",
+        "name": "Vikram Kumar Sinha"
+      },
+      "description": "Optical air-gapped file transfer tool."
+    }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="glitch" data-text="LightBeam">LightBeam</h1>
+            <p class="subtitle">Optical Air-Gapped Data Transport</p>
+        </header>
+        
+        <main class="grid-menu">
+            <a href="sender.html" class="card sender-card">
+                <div class="icon">⚡</div>
+                <h2>Transmit</h2>
+                <p>Initiate Optical Sequence</p>
+            </a>
+
+            <a href="receiver.html" class="card receiver-card">
+                <div class="icon">👁️</div>
+                <h2>Receive</h2>
+                <p>Engage Optical Sensor</p>
+            </a>
+        </main>
+        
+        <footer>
+            <p><strong>Security Protocol:</strong> Client-Side Execution Only.</p>
+            <p class="version">v1.0.0 | Vikram Kumar Sinha</p>
+        </footer>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('SW registered: ', reg.scope))
+                    .catch(err => console.error('SW registration failed: ', err));
+            });
+        }
+    </script>
+</body>
+</html>
