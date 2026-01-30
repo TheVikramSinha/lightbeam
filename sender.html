@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none';">
+    
+    <title>LightBeam Sender | Generate Optical Data Stream</title>
+    <meta name="description" content="Initiate an air-gapped file transfer. The LightBeam Sender converts files into a rapid sequence of QR codes for optical transmission. Zero logs, zero internet.">
+    <meta name="keywords" content="QR code generator, air-gapped file transfer, optical data transmission, offline file share, secure file sender, Vikram Kumar Sinha">
+    <meta name="author" content="Vikram Kumar Sinha">
+    <link rel="canonical" href="https://thevikramsinha.github.io/lightbeam/sender.html">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://thevikramsinha.github.io/lightbeam/sender.html">
+    <meta property="og:title" content="LightBeam Sender | Optical Data Transmitter">
+    <meta property="og:description" content="Turn your screen into a data transmitter. Securely send files via light waves without WiFi or Bluetooth.">
+    <meta property="og:image" content="https://thevikramsinha.github.io/lightbeam/assets/og-sender.jpg">
+
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://thevikramsinha.github.io/lightbeam/sender.html">
+    <meta property="twitter:title" content="LightBeam Sender | Optical Data Transmitter">
+    <meta property="twitter:description" content="Turn your screen into a data transmitter. Securely send files via light waves without WiFi or Bluetooth.">
+    <meta property="twitter:image" content="https://thevikramsinha.github.io/lightbeam/assets/og-sender.jpg">
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="theme-color" content="#0d1117">
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h2 style="color: var(--accent-primary);">Transmit Mode</h2>
+            <p class="subtitle">Select a file to begin optical sequencing.</p>
+        </header>
+
+        <main>
+            <div style="margin-bottom: 2rem;">
+                <input type="file" id="fileInput" aria-label="Select file to transmit">
+            </div>
+
+            <div id="controls" style="display:none; width: 100%;">
+                
+                <div class="canvas-wrapper">
+                    <canvas id="qr-canvas"></canvas>
+                </div>
+
+                <div style="text-align: left; margin-bottom: 1rem;">
+                    <label for="speedRange" style="font-size: 0.9rem; color: var(--text-muted);">Pulse Interval (ms)</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="speedRange" min="50" max="500" value="100" style="flex-grow:1;">
+                        <span id="speedDisplay" style="font-family: monospace; color: var(--accent-primary);">100ms</span>
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-card); padding: 1rem; border-radius: 6px; border: 1px solid var(--border);">
+                    <div id="statusText" style="font-weight: bold; margin-bottom: 5px;">Ready</div>
+                    <div style="font-size: 0.8rem; opacity: 0.7;">
+                        Chunk: <span id="chunkIndex">0</span> / <span id="chunkTotal">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <a href="index.html" class="btn" style="margin-top: 2rem; border-color: var(--border); color: var(--text-muted);">← Back to Menu</a>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js" integrity="sha512-R7VUPZpSpwUXqT2t1U6yS4yY9G3K49Wj8F4gB4qK8w7l5nE0o6x4n6mF2z0+7n3k9o5p6q4r8s9t0u1v3w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+    <script src="js/app-sender.js"></script>
+</body>
+</html>
