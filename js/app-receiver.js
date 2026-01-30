@@ -1,201 +1,159 @@
 'use strict';
 
+// SAFETY CHECK: Verify Library Loaded
+if (typeof QRCode === 'undefined') {
+    alert("CRITICAL ERROR: The QRCode library failed to load. Please check your internet connection or ad-blocker.");
+}
+
 // =========================================
 // 1. CONFIGURATION & STATE
 // =========================================
+const CONFIG = {
+    CHUNK_SIZE: 1200, 
+    DEFAULT_SPEED: 100
+};
+
 const state = {
-    receivedChunks: new Map(), // Stores { index: data }
-    totalChunks: 0,
-    fileName: null,
-    isScanning: false,
-    startTime: null,
-    lastChunkTime: null,
-    bytesReceived: 0
+    chunks: [],
+    currentIndex: 0,
+    isTransmitting: false,
+    intervalId: null,
+    fileName: ''
 };
 
-// DOM Elements
 const elements = {
-    video: document.getElementById('video-preview'),
-    canvas: document.getElementById('hidden-canvas'),
-    ctx: document.getElementById('hidden-canvas').getContext('2d', { willReadFrequently: true }),
-    startBtn: document.getElementById('startBtn'),
-    permissionOverlay: document.getElementById('permissionOverlay'),
-    scannerUI: document.getElementById('scannerUI'),
+    fileInput: document.getElementById('fileInput'),
+    controls: document.getElementById('controls'),
+    canvas: document.getElementById('qr-canvas'),
+    speedRange: document.getElementById('speedRange'),
+    speedDisplay: document.getElementById('speedDisplay'),
     statusText: document.getElementById('statusText'),
-    progressBar: document.getElementById('progressBar'),
-    chunkCount: document.getElementById('chunkCount'),
-    totalCount: document.getElementById('totalCount'),
-    fileNameDisplay: document.getElementById('fileNameDisplay'),
-    speedStat: document.getElementById('speedStat')
+    chunkIndex: document.getElementById('chunkIndex'),
+    chunkTotal: document.getElementById('chunkTotal')
 };
 
 // =========================================
-// 2. CORE LOGIC: SCANNING LOOP
+// 2. CORE LOGIC: CHUNKING
 // =========================================
 
-elements.startBtn.addEventListener('click', async () => {
-    try {
-        // Request Camera Access (Rear camera preferred)
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-                facingMode: { ideal: "environment" },
-                width: { ideal: 1280 }, // HD resolution for better QR detail
-                height: { ideal: 720 } 
-            } 
-        });
+async function prepareFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
 
-        // Initialize UI
-        elements.video.srcObject = stream;
-        elements.video.setAttribute("playsinline", true); // Required for iOS
-        elements.video.play();
+        reader.onload = () => {
+            try {
+                // Binary to Base64 (Safe Method)
+                const binaryString = Array.from(new Uint8Array(reader.result))
+                    .map(byte => String.fromCharCode(byte))
+                    .join('');
+                
+                const base64Data = btoa(binaryString);
+                
+                const totalLength = base64Data.length;
+                const totalChunks = Math.ceil(totalLength / CONFIG.CHUNK_SIZE);
+                const generatedChunks = [];
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * CONFIG.CHUNK_SIZE;
+                    const end = Math.min(start + CONFIG.CHUNK_SIZE, totalLength);
+                    const chunkData = base64Data.substring(start, end);
+
+                    const payload = {
+                        i: i,
+                        t: totalChunks,
+                        d: chunkData
+                    };
+                    
+                    if (i === 0) payload.n = file.name;
+
+                    generatedChunks.push(JSON.stringify(payload));
+                }
+                resolve(generatedChunks);
+            } catch (err) {
+                reject(err);
+            }
+        };
+
+        reader.onerror = () => reject(new Error("File read failed"));
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+// =========================================
+// 3. CORE LOGIC: TRANSMISSION LOOP
+// =========================================
+
+function startPulse(speedMs) {
+    if (state.intervalId) clearInterval(state.intervalId);
+
+    elements.speedDisplay.innerText = `${speedMs}ms`;
+
+    state.intervalId = setInterval(() => {
+        if (state.chunks.length === 0) return;
+
+        const currentData = state.chunks[state.currentIndex];
+
+        try {
+            // RENDER QR
+            QRCode.toCanvas(elements.canvas, currentData, {
+                width: 350,
+                margin: 2,
+                errorCorrectionLevel: 'L',
+                color: {
+                    dark: "#000000",
+                    light: "#ffffff"
+                }
+            }, function (error) {
+                if (error) console.error("QR Gen Error:", error);
+            });
+        } catch (e) {
+            console.error("Library Error:", e);
+            clearInterval(state.intervalId);
+            elements.statusText.innerText = "Library Error";
+            return;
+        }
+
+        elements.chunkIndex.innerText = state.currentIndex + 1;
+        state.currentIndex = (state.currentIndex + 1) % state.chunks.length;
+
+    }, speedMs);
+
+    elements.statusText.innerText = "Transmitting (Looping)";
+    elements.statusText.style.color = "var(--accent-success)";
+}
+
+// =========================================
+// 4. EVENT LISTENERS
+// =========================================
+
+elements.fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    elements.statusText.innerText = "Processing File...";
+    elements.statusText.style.color = "var(--accent-primary)";
+    
+    try {
+        state.chunks = await prepareFile(file);
+        state.currentIndex = 0;
+        state.fileName = file.name;
         
-        elements.permissionOverlay.style.display = 'none';
-        elements.scannerUI.style.display = 'block';
+        elements.chunkTotal.innerText = state.chunks.length;
+        elements.controls.style.display = 'block';
         
-        state.isScanning = true;
-        requestAnimationFrame(scanFrame);
+        startPulse(elements.speedRange.value);
 
     } catch (err) {
-        console.error("Camera Error:", err);
-        alert("Camera access denied or unavailable. Please ensure you are on HTTPS.");
+        console.error(err);
+        alert("Error processing file. See console.");
     }
 });
 
-function scanFrame() {
-    if (!state.isScanning) return;
-
-    if (elements.video.readyState === elements.video.HAVE_ENOUGH_DATA) {
-        // Sync canvas size to video stream
-        elements.canvas.height = elements.video.videoHeight;
-        elements.canvas.width = elements.video.videoWidth;
-        
-        // Draw current frame
-        elements.ctx.drawImage(elements.video, 0, 0, elements.canvas.width, elements.canvas.height);
-        
-        // Extract pixel data
-        const imageData = elements.ctx.getImageData(0, 0, elements.canvas.width, elements.canvas.height);
-        
-        // DECODE: Attempt to find QR code
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: "dontInvert", // Optimization: Assume standard black-on-white QR
-        });
-
-        if (code) {
-            handleDecodedData(code.data);
-        }
+elements.speedRange.addEventListener('input', (e) => {
+    const newSpeed = parseInt(e.target.value);
+    if (state.chunks.length > 0) {
+        startPulse(newSpeed);
+    } else {
+        elements.speedDisplay.innerText = `${newSpeed}ms`;
     }
-
-    requestAnimationFrame(scanFrame);
-}
-
-// =========================================
-// 3. CORE LOGIC: DATA PROCESSING
-// =========================================
-
-function handleDecodedData(jsonString) {
-    try {
-        const payload = JSON.parse(jsonString);
-
-        // Validation: Ensure it matches our LightBeam schema
-        if (typeof payload.i === 'undefined' || typeof payload.d === 'undefined') return;
-
-        // 1. Initialization (First valid chunk encountered)
-        if (state.totalChunks === 0 && payload.t) {
-            state.totalChunks = payload.t;
-            elements.totalCount.innerText = payload.t;
-            
-            // Start Timer
-            state.startTime = Date.now();
-        }
-
-        // Capture Filename (sent usually on chunk 0, but could be others depending on logic)
-        if (payload.n && !state.fileName) {
-            state.fileName = payload.n;
-            elements.fileNameDisplay.innerText = payload.n;
-        }
-
-        // 2. Storage & Deduplication
-        if (!state.receivedChunks.has(payload.i)) {
-            state.receivedChunks.set(payload.i, payload.d);
-            state.bytesReceived += payload.d.length; // Approximate size
-            
-            updateProgress();
-            
-            // 3. Completion Check
-            if (state.receivedChunks.size === state.totalChunks) {
-                finalizeTransfer();
-            }
-        }
-
-    } catch (e) {
-        // Ignore non-JSON QR codes (random clutter)
-    }
-}
-
-function updateProgress() {
-    // Progress Bar
-    const percent = (state.receivedChunks.size / state.totalChunks) * 100;
-    elements.progressBar.style.width = `${percent}%`;
-    elements.chunkCount.innerText = state.receivedChunks.size;
-
-    // Speed Calculation
-    const now = Date.now();
-    const elapsedSeconds = (now - state.startTime) / 1000;
-    
-    if (elapsedSeconds > 0) {
-        // Base64 is ~1.33x larger than binary. We calculate approx binary KB/s
-        const estimatedBinarySize = state.bytesReceived * 0.75; 
-        const kbps = (estimatedBinarySize / 1024) / elapsedSeconds;
-        elements.speedStat.innerText = `${kbps.toFixed(1)} KB/s`;
-    }
-}
-
-// =========================================
-// 4. CORE LOGIC: REASSEMBLY & DOWNLOAD
-// =========================================
-
-function finalizeTransfer() {
-    state.isScanning = false;
-    elements.statusText.innerText = "Reassembling File...";
-    elements.statusText.style.color = "var(--accent-primary)";
-
-    // 1. Sort & Join
-    // We must iterate 0..totalChunks to ensure order
-    let fullBase64 = "";
-    for (let i = 0; i < state.totalChunks; i++) {
-        fullBase64 += state.receivedChunks.get(i);
-    }
-
-    // 2. Convert Base64 -> Binary -> Blob
-    try {
-        const binaryString = atob(fullBase64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-
-        const blob = new Blob([bytes], { type: "application/octet-stream" });
-        const url = URL.createObjectURL(blob);
-
-        // 3. Trigger Download
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = state.fileName || "lightbeam-received-file";
-        document.body.appendChild(a); // Required for Firefox
-        a.click();
-        
-        // Cleanup
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-            elements.statusText.innerText = "Transfer Complete! ✅";
-        }, 100);
-
-    } catch (err) {
-        console.error("Reassembly Error:", err);
-        elements.statusText.innerText = "Error in Reassembly";
-        elements.statusText.style.color = "var(--accent-alert)";
-    }
-}
+});
