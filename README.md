@@ -73,7 +73,7 @@ LightBeam is architected for **high-security, low-bandwidth** scenarios where ph
 ### Legal Disclaimer
 **This software is provided "as is", without warranty of any kind, express or implied.** By using LightBeam, you acknowledge that:
 1.  **Not for Mission-Critical Data:** This tool should not be relied upon for the transfer of life-critical, medical, or time-sensitive emergency data.
-2.  **No Liability:** The authors and contributors are not liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
+2.  **No Liability:** The author and contributors are not liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
 3.  **Experimental Nature:** This is a proof-of-concept implementation of optical air-gapped transmission and may not meet industry standards for encryption or error correction.
 
 *Use responsibly and at your own risk.*
